@@ -1,0 +1,73 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation } from "@tanstack/react-query";
+import { toast } from "sonner";
+import type { z } from "zod";
+import { AppShell } from "@/components/layout/AppShell";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { RequireAuth } from "@/lib/auth/RequireAuth";
+import { useAuth } from "@/lib/auth/AuthContext";
+import { usersApi } from "@/lib/api/users";
+import { profileSchema } from "@/lib/schemas";
+
+export const Route = createFileRoute("/profile")({
+  component: () => (
+    <RequireAuth>
+      <ProfilePage />
+    </RequireAuth>
+  ),
+});
+
+type FormValues = z.infer<typeof profileSchema>;
+
+function ProfilePage() {
+  const { user, refresh } = useAuth();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<FormValues>({
+    resolver: zodResolver(profileSchema),
+    defaultValues: { full_name: user?.full_name ?? "", email: user?.email ?? "" },
+  });
+
+  const save = useMutation({
+    mutationFn: (v: FormValues) => usersApi.updateProfile(v),
+    onSuccess: async () => {
+      toast.success("Profile updated");
+      await refresh();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <AppShell>
+      <div className="mx-auto max-w-xl px-4 py-10 sm:px-6 lg:px-8">
+        <h1 className="font-display text-3xl font-semibold">Profile</h1>
+        <p className="mt-1 text-sm text-muted-foreground capitalize">Role: {user?.role}</p>
+
+        <form
+          onSubmit={handleSubmit((v) => save.mutate(v))}
+          className="mt-8 space-y-4 rounded-2xl border border-border/60 bg-card p-6"
+        >
+          <div className="space-y-1.5">
+            <Label>Full name</Label>
+            <Input {...register("full_name")} />
+            {errors.full_name && <p className="text-xs text-destructive">{errors.full_name.message}</p>}
+          </div>
+          <div className="space-y-1.5">
+            <Label>Email</Label>
+            <Input type="email" {...register("email")} />
+            {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
+          </div>
+          <Button type="submit" disabled={save.isPending}>
+            {save.isPending ? "Saving…" : "Save changes"}
+          </Button>
+        </form>
+      </div>
+    </AppShell>
+  );
+}
