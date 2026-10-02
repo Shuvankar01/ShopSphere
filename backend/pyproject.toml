@@ -1,0 +1,63 @@
+[project]
+name = "shopsphere-backend"
+version = "1.0.0"
+description = "Production Ready ShopSphere Backend"
+readme = "README.md"
+requires-python = ">=3.14"
+license = { text = "MIT" }
+
+authors = [
+    { name = "Shuvankar Sahoo" }
+]
+
+dependencies = []
+
+[tool.black]
+line-length = 88
+target-version = ["py314"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py314"
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "I",
+    "W",
+    "UP",
+    "B",
+]
+
+ignore = [
+    "E501",
+]
+
+[tool.isort]
+profile = "black"
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = [
+    "tests",
+]
+python_files = [
+    "test_*.py",
+]
+addopts = "-v"
+
+[tool.coverage.run]
+source = [
+    "app",
+]
+
+[tool.coverage.report]
+show_missing = true
+
+[build-system]
+requires = [
+    "setuptools>=80",
+    "wheel",
+]
+build-backend = "setuptools.build_meta"
