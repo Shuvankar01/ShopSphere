@@ -33,3 +33,11 @@ class ForbiddenException(BaseAPIException):
 class ConflictException(BaseAPIException):
     def __init__(self, detail: str = "Resource conflict"):
         super().__init__(status_code=status.HTTP_409_CONFLICT, detail=detail)
+
+class TooManyRequestsException(BaseAPIException):
+    def __init__(self, detail: str = "Too many requests"):
+        super().__init__(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=detail,
+            headers={"Retry-After": "60"},
+        )
