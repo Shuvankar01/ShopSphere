@@ -1,6 +1,17 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { ShoppingCart, User, LogOut, Search, Package, LayoutDashboard, Store } from "lucide-react";
+import {
+  Heart,
+  ShoppingCart,
+  User,
+  LogOut,
+  Search,
+  Package,
+  LayoutDashboard,
+  Store,
+  Boxes,
+} from "lucide-react";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,15 +24,22 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useCart } from "@/hooks/useCart";
+import { wishlistApi } from "@/lib/api/wishlist";
 
 export function Header() {
   const { user, logout } = useAuth();
   const { data: cart } = useCart();
+  const wishlist = useQuery({
+    queryKey: ["wishlist"],
+    queryFn: () => wishlistApi.get(),
+    enabled: !!user,
+  });
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [q, setQ] = useState("");
 
   const itemCount = cart?.items.reduce((s, i) => s + i.quantity, 0) ?? 0;
+  const wishlistCount = wishlist.data?.items.length ?? 0;
 
   const onSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,6 +85,16 @@ export function Header() {
         </form>
 
         <div className="ml-auto flex items-center gap-2 md:ml-0">
+          <Link to="/wishlist">
+            <Button variant="ghost" size="icon" className="relative" aria-label="Wishlist">
+              <Heart className="h-5 w-5" />
+              {wishlistCount > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-accent-foreground">
+                  {wishlistCount}
+                </span>
+              )}
+            </Button>
+          </Link>
           <Link to="/cart">
             <Button variant="ghost" size="icon" className="relative" aria-label="Cart">
               <ShoppingCart className="h-5 w-5" />
@@ -88,7 +116,9 @@ export function Header() {
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>
                   <div className="font-medium">{user.full_name}</div>
-                  <div className="text-xs font-normal text-muted-foreground capitalize">{user.role}</div>
+                  <div className="text-xs font-normal text-muted-foreground capitalize">
+                    {user.role}
+                  </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => navigate({ to: "/dashboard" })}>
@@ -97,13 +127,21 @@ export function Header() {
                 <DropdownMenuItem onClick={() => navigate({ to: "/orders" })}>
                   <Package className="mr-2 h-4 w-4" /> Orders
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate({ to: "/wishlist" })}>
+                  <Heart className="mr-2 h-4 w-4" /> Wishlist
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate({ to: "/profile" })}>
                   <User className="mr-2 h-4 w-4" /> Profile
                 </DropdownMenuItem>
                 {user.role === "seller" && (
-                  <DropdownMenuItem onClick={() => navigate({ to: "/seller/products" })}>
-                    <Store className="mr-2 h-4 w-4" /> Seller hub
-                  </DropdownMenuItem>
+                  <>
+                    <DropdownMenuItem onClick={() => navigate({ to: "/seller/products" })}>
+                      <Store className="mr-2 h-4 w-4" /> Seller hub
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate({ to: "/seller/inventory" })}>
+                      <Boxes className="mr-2 h-4 w-4" /> Inventory
+                    </DropdownMenuItem>
+                  </>
                 )}
                 {user.role === "admin" && (
                   <DropdownMenuItem onClick={() => navigate({ to: "/admin" })}>
@@ -119,7 +157,9 @@ export function Header() {
           ) : (
             <div className="flex items-center gap-1">
               <Link to="/login">
-                <Button variant="ghost" size="sm">Sign in</Button>
+                <Button variant="ghost" size="sm">
+                  Sign in
+                </Button>
               </Link>
               <Link to="/register">
                 <Button size="sm">Get started</Button>

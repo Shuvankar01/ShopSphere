@@ -14,10 +14,9 @@ export function ProductCard({ product }: { product: Product }) {
       className="group flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-card transition-all hover:-translate-y-0.5 hover:shadow-lg"
     >
       <div className="relative aspect-square overflow-hidden bg-muted">
-        {product.image_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
+        {product.image_url || product.images?.[0]?.url ? (
           <img
-            src={product.image_url}
+            src={product.image_url || product.images?.[0]?.url}
             alt={product.name}
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
