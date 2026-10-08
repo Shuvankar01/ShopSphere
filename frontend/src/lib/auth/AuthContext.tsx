@@ -8,7 +8,12 @@ interface AuthContextValue {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<User>;
-  register: (data: { full_name: string; email: string; password: string; role?: "customer" | "seller" }) => Promise<User>;
+  register: (data: {
+    full_name: string;
+    email: string;
+    password: string;
+    role?: "customer" | "seller";
+  }) => Promise<User>;
   logout: () => void;
   refresh: () => Promise<void>;
 }
@@ -58,6 +63,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
+    // Notify the server while the access token is still available (the client
+    // discards its tokens either way — JWTs are stateless).
+    authApi.logout().catch(() => {});
     tokenStore.clear();
     setUser(null);
     qc.clear();
