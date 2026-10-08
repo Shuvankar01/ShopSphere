@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WishlistRouteImport } from './routes/wishlist'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as ProductsRouteImport } from './routes/products'
@@ -20,12 +21,19 @@ import { Route as CartRouteImport } from './routes/cart'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as SellerProductsRouteImport } from './routes/seller.products'
+import { Route as SellerInventoryRouteImport } from './routes/seller.inventory'
 import { Route as ProductsIdRouteImport } from './routes/products.$id'
 import { Route as OrdersIdRouteImport } from './routes/orders.$id'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminProductsRouteImport } from './routes/admin.products'
 import { Route as AdminOrdersRouteImport } from './routes/admin.orders'
+import { Route as AdminCouponsRouteImport } from './routes/admin.coupons'
 
+const WishlistRoute = WishlistRouteImport.update({
+  id: '/wishlist',
+  path: '/wishlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
   path: '/register',
@@ -81,6 +89,11 @@ const SellerProductsRoute = SellerProductsRouteImport.update({
   path: '/seller/products',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SellerInventoryRoute = SellerInventoryRouteImport.update({
+  id: '/seller/inventory',
+  path: '/seller/inventory',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProductsIdRoute = ProductsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -106,6 +119,11 @@ const AdminOrdersRoute = AdminOrdersRouteImport.update({
   path: '/admin/orders',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminCouponsRoute = AdminCouponsRouteImport.update({
+  id: '/admin/coupons',
+  path: '/admin/coupons',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -117,11 +135,14 @@ export interface FileRoutesByFullPath {
   '/products': typeof ProductsRouteWithChildren
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
+  '/wishlist': typeof WishlistRoute
+  '/admin/coupons': typeof AdminCouponsRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/users': typeof AdminUsersRoute
   '/orders/$id': typeof OrdersIdRoute
   '/products/$id': typeof ProductsIdRoute
+  '/seller/inventory': typeof SellerInventoryRoute
   '/seller/products': typeof SellerProductsRoute
   '/admin/': typeof AdminIndexRoute
 }
@@ -135,11 +156,14 @@ export interface FileRoutesByTo {
   '/products': typeof ProductsRouteWithChildren
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
+  '/wishlist': typeof WishlistRoute
+  '/admin/coupons': typeof AdminCouponsRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/users': typeof AdminUsersRoute
   '/orders/$id': typeof OrdersIdRoute
   '/products/$id': typeof ProductsIdRoute
+  '/seller/inventory': typeof SellerInventoryRoute
   '/seller/products': typeof SellerProductsRoute
   '/admin': typeof AdminIndexRoute
 }
@@ -154,11 +178,14 @@ export interface FileRoutesById {
   '/products': typeof ProductsRouteWithChildren
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
+  '/wishlist': typeof WishlistRoute
+  '/admin/coupons': typeof AdminCouponsRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/users': typeof AdminUsersRoute
   '/orders/$id': typeof OrdersIdRoute
   '/products/$id': typeof ProductsIdRoute
+  '/seller/inventory': typeof SellerInventoryRoute
   '/seller/products': typeof SellerProductsRoute
   '/admin/': typeof AdminIndexRoute
 }
@@ -174,11 +201,14 @@ export interface FileRouteTypes {
     | '/products'
     | '/profile'
     | '/register'
+    | '/wishlist'
+    | '/admin/coupons'
     | '/admin/orders'
     | '/admin/products'
     | '/admin/users'
     | '/orders/$id'
     | '/products/$id'
+    | '/seller/inventory'
     | '/seller/products'
     | '/admin/'
   fileRoutesByTo: FileRoutesByTo
@@ -192,11 +222,14 @@ export interface FileRouteTypes {
     | '/products'
     | '/profile'
     | '/register'
+    | '/wishlist'
+    | '/admin/coupons'
     | '/admin/orders'
     | '/admin/products'
     | '/admin/users'
     | '/orders/$id'
     | '/products/$id'
+    | '/seller/inventory'
     | '/seller/products'
     | '/admin'
   id:
@@ -210,11 +243,14 @@ export interface FileRouteTypes {
     | '/products'
     | '/profile'
     | '/register'
+    | '/wishlist'
+    | '/admin/coupons'
     | '/admin/orders'
     | '/admin/products'
     | '/admin/users'
     | '/orders/$id'
     | '/products/$id'
+    | '/seller/inventory'
     | '/seller/products'
     | '/admin/'
   fileRoutesById: FileRoutesById
@@ -229,15 +265,25 @@ export interface RootRouteChildren {
   ProductsRoute: typeof ProductsRouteWithChildren
   ProfileRoute: typeof ProfileRoute
   RegisterRoute: typeof RegisterRoute
+  WishlistRoute: typeof WishlistRoute
+  AdminCouponsRoute: typeof AdminCouponsRoute
   AdminOrdersRoute: typeof AdminOrdersRoute
   AdminProductsRoute: typeof AdminProductsRoute
   AdminUsersRoute: typeof AdminUsersRoute
+  SellerInventoryRoute: typeof SellerInventoryRoute
   SellerProductsRoute: typeof SellerProductsRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/wishlist': {
+      id: '/wishlist'
+      path: '/wishlist'
+      fullPath: '/wishlist'
+      preLoaderRoute: typeof WishlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/register': {
       id: '/register'
       path: '/register'
@@ -315,6 +361,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SellerProductsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/seller/inventory': {
+      id: '/seller/inventory'
+      path: '/seller/inventory'
+      fullPath: '/seller/inventory'
+      preLoaderRoute: typeof SellerInventoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/products/$id': {
       id: '/products/$id'
       path: '/$id'
@@ -348,6 +401,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/orders'
       fullPath: '/admin/orders'
       preLoaderRoute: typeof AdminOrdersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/coupons': {
+      id: '/admin/coupons'
+      path: '/admin/coupons'
+      fullPath: '/admin/coupons'
+      preLoaderRoute: typeof AdminCouponsRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -386,9 +446,12 @@ const rootRouteChildren: RootRouteChildren = {
   ProductsRoute: ProductsRouteWithChildren,
   ProfileRoute: ProfileRoute,
   RegisterRoute: RegisterRoute,
+  WishlistRoute: WishlistRoute,
+  AdminCouponsRoute: AdminCouponsRoute,
   AdminOrdersRoute: AdminOrdersRoute,
   AdminProductsRoute: AdminProductsRoute,
   AdminUsersRoute: AdminUsersRoute,
+  SellerInventoryRoute: SellerInventoryRoute,
   SellerProductsRoute: SellerProductsRoute,
   AdminIndexRoute: AdminIndexRoute,
 }

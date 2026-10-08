@@ -67,15 +67,25 @@ function OrderDetail() {
               </li>
             ))}
           </ul>
-          <div className="mt-4 flex justify-between border-t border-border/60 pt-4 text-base font-semibold">
-            <span>Total</span>
-            <span>{formatCurrency(o.total_amount)}</span>
+          <div className="mt-4 space-y-2 border-t border-border/60 pt-4">
+            {o.discount_amount > 0 && (
+              <div className="flex justify-between text-sm text-accent">
+                <span>Coupon discount</span>
+                <span>−{formatCurrency(o.discount_amount)}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-base font-semibold">
+              <span>Total</span>
+              <span>{formatCurrency(o.total_amount)}</span>
+            </div>
           </div>
         </section>
 
         <section className="mt-6 rounded-2xl border border-border/60 bg-card p-6">
           <h2 className="font-display text-lg font-semibold">Shipping</h2>
-          <p className="mt-2 text-sm text-muted-foreground whitespace-pre-line">{o.shipping_address}</p>
+          <p className="mt-2 text-sm text-muted-foreground whitespace-pre-line">
+            {o.shipping_address}
+          </p>
         </section>
       </div>
     </AppShell>

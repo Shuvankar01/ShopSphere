@@ -88,12 +88,16 @@ function CheckoutPage() {
               <div className="sm:col-span-2 space-y-1.5">
                 <Label>Full name</Label>
                 <Input {...register("full_name")} />
-                {errors.full_name && <p className="text-xs text-destructive">{errors.full_name.message}</p>}
+                {errors.full_name && (
+                  <p className="text-xs text-destructive">{errors.full_name.message}</p>
+                )}
               </div>
               <div className="sm:col-span-2 space-y-1.5">
                 <Label>Address</Label>
                 <Input {...register("address_line")} />
-                {errors.address_line && <p className="text-xs text-destructive">{errors.address_line.message}</p>}
+                {errors.address_line && (
+                  <p className="text-xs text-destructive">{errors.address_line.message}</p>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label>City</Label>
@@ -116,7 +120,9 @@ function CheckoutPage() {
                 value={watch("payment_method")}
                 onValueChange={(v) => setValue("payment_method", v as FormValues["payment_method"])}
               >
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="card">Credit / debit card</SelectItem>
                   <SelectItem value="paypal">PayPal</SelectItem>
@@ -134,13 +140,23 @@ function CheckoutPage() {
                   <span className="text-muted-foreground">
                     {i.product.name} × {i.quantity}
                   </span>
-                  <span>{formatCurrency((i.product.discount_price ?? i.product.price) * i.quantity)}</span>
+                  <span>
+                    {formatCurrency((i.product.discount_price ?? i.product.price) * i.quantity)}
+                  </span>
                 </div>
               ))}
               <div className="mt-4 flex justify-between border-t border-border/60 pt-4 text-base font-semibold">
                 <span>Total</span>
-                <span>{formatCurrency(cart.data.subtotal)}</span>
+                <span>{formatCurrency(cart.data.total)}</span>
               </div>
+              {(cart.data.discount_amount ?? 0) > 0 && (
+                <div className="flex justify-between text-xs text-accent">
+                  <span>
+                    Coupon {cart.data.coupon_code ? `${cart.data.coupon_code} applied` : "applied"}
+                  </span>
+                  <span>−{formatCurrency(cart.data.discount_amount)}</span>
+                </div>
+              )}
             </div>
             <Button type="submit" className="mt-6 w-full" size="lg" disabled={placeOrder.isPending}>
               {placeOrder.isPending ? "Placing order…" : "Place order"}

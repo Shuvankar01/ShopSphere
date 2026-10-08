@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Package, ShoppingBag, User as UserIcon, Store } from "lucide-react";
+import { Package, ShoppingBag, User as UserIcon, Store, Heart, Boxes } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RequireAuth } from "@/lib/auth/RequireAuth";
@@ -22,17 +22,23 @@ function Dashboard() {
 
   const stats = [
     { label: "Orders", value: orders.data?.length ?? "—", icon: Package, to: "/orders" },
+    { label: "Wishlist", value: "Saved", icon: Heart, to: "/wishlist" },
     { label: "Profile", value: user?.full_name ?? "—", icon: UserIcon, to: "/profile" },
     { label: "Shop", value: "Browse", icon: ShoppingBag, to: "/products" },
     ...(user?.role === "seller"
-      ? [{ label: "Seller hub", value: "Manage", icon: Store, to: "/seller/products" }]
+      ? [
+          { label: "Seller hub", value: "Manage", icon: Store, to: "/seller/products" },
+          { label: "Inventory", value: "Stock", icon: Boxes, to: "/seller/inventory" },
+        ]
       : []),
   ];
 
   return (
     <AppShell>
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
-        <h1 className="font-display text-3xl font-semibold">Welcome back, {user?.full_name.split(" ")[0]}</h1>
+        <h1 className="font-display text-3xl font-semibold">
+          Welcome back, {user?.full_name.split(" ")[0]}
+        </h1>
         <p className="mt-1 text-sm text-muted-foreground">Here's a snapshot of your account.</p>
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -43,7 +49,9 @@ function Dashboard() {
               className="rounded-2xl border border-border/60 bg-card p-5 transition-colors hover:border-accent/60"
             >
               <s.icon className="h-5 w-5 text-accent" />
-              <div className="mt-4 text-xs uppercase tracking-wider text-muted-foreground">{s.label}</div>
+              <div className="mt-4 text-xs uppercase tracking-wider text-muted-foreground">
+                {s.label}
+              </div>
               <div className="mt-1 truncate text-lg font-semibold">{s.value}</div>
             </Link>
           ))}
