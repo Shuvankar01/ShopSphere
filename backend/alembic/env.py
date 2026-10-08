@@ -14,7 +14,10 @@ from app.core.config import settings
 from app.models.base import Base
 
 # Import all models to ensure they are registered with Base
-from app.models import user, product, cart, order
+from app.models import (  # noqa: F401
+    user, role, address, product, inventory, cart, order, wishlist,
+    payment, coupon, return_request, notification, banner, audit,
+)
 
 # this is the Alembic Config object
 config = context.config
