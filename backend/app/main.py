@@ -1,33 +1,64 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
 from app.core.exceptions import BaseAPIException
+
+# Database
 from app.middleware.error_handler import (
     api_exception_handler,
     general_exception_handler,
 )
 from app.middleware.logging_middleware import LoggingMiddleware
+from app.middleware.security_headers import SecurityHeadersMiddleware
 
-# Database
-from app.database.connection import engine
-from app.models.base import Base
-
-# Import ALL models so SQLAlchemy registers them
-from app.models.user import User
-from app.models.product import Product
-from app.models.cart import Cart
-from app.models.order import Order
+# Import ALL models so SQLAlchemy registers them with Base.metadata
+from app.models import (  # noqa: F401
+    Address,
+    AuditLog,
+    Banner,
+    Brand,
+    Cart,
+    CartItem,
+    Category,
+    Coupon,
+    CouponUsage,
+    Inventory,
+    InventoryMovement,
+    Notification,
+    Order,
+    OrderItem,
+    OrderStatusHistory,
+    Payment,
+    PaymentTransaction,
+    Product,
+    ProductImage,
+    ProductVariant,
+    Refund,
+    Return,
+    ReturnItem,
+    Review,
+    ReviewImage,
+    Role,
+    User,
+    UserRole,
+    Wishlist,
+    WishlistItem,
+)
 
 # Routers
 from app.routers import (
+    admin,
     auth,
-    users,
-    products,
     cart,
+    coupons,
+    inventory,
     orders,
     payments,
-    admin,
+    products,
+    users,
+    wishlist,
 )
 
 app = FastAPI(
@@ -35,8 +66,8 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
 )
 
-# Create database tables automatically (for SQLite development)
-Base.metadata.create_all(bind=engine)
+# NOTE: Tables are created by Alembic migrations.
+# Do NOT call Base.metadata.create_all in production.
 
 # CORS
 if settings.BACKEND_CORS_ORIGINS:
@@ -48,8 +79,9 @@ if settings.BACKEND_CORS_ORIGINS:
         allow_headers=["*"],
     )
 
-# Middlewares
+# Middlewares (added last → outermost, so security headers cover CORS responses too)
 app.add_middleware(LoggingMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
 
 # Exception Handlers
 app.add_exception_handler(BaseAPIException, api_exception_handler)
@@ -63,6 +95,14 @@ app.include_router(cart.router, prefix=settings.API_V1_STR)
 app.include_router(orders.router, prefix=settings.API_V1_STR)
 app.include_router(payments.router, prefix=settings.API_V1_STR)
 app.include_router(admin.router, prefix=settings.API_V1_STR)
+app.include_router(inventory.router, prefix=settings.API_V1_STR)
+app.include_router(wishlist.router, prefix=settings.API_V1_STR)
+app.include_router(coupons.router, prefix=settings.API_V1_STR)
+
+# Local (development) image storage: files uploaded for product images are
+# served from settings.UPLOAD_DIR. Metadata lives in PostgreSQL.
+settings.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
 
 
 @app.get("/", tags=["Root"])
