@@ -134,6 +134,10 @@ class ProductImage(Base):
 
 
 class Review(Base):
+    """Product review with moderation. `is_verified` is derived from backend
+    order data (a paid order containing the product), never from the client.
+    Only `approved` reviews are shown publicly / counted in the rating."""
+
     __tablename__ = "reviews"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
@@ -142,6 +146,8 @@ class Review(Base):
     product_id = Column(String, ForeignKey("products.id"), nullable=False, index=True)
     rating = Column(Integer, nullable=False)
     comment = Column(Text, nullable=False)
+    is_verified = Column(Boolean, nullable=False, default=False)
+    moderation_status = Column(String(20), nullable=False, default="pending")  # pending / approved / rejected
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     product = relationship("Product", back_populates="reviews")
@@ -150,6 +156,10 @@ class Review(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "product_id", name="uq_one_review_per_user_product"),
         CheckConstraint("rating >= 1 AND rating <= 5", name="ck_review_rating_range"),
+        CheckConstraint(
+            "moderation_status IN ('pending', 'approved', 'rejected')",
+            name="ck_review_moderation_status",
+        ),
     )
 
 

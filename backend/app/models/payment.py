@@ -14,11 +14,24 @@ from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.models.base import Base
 
-PAYMENT_STATUSES = ("pending", "succeeded", "failed", "refunded")
-REFUND_STATUSES = ("requested", "completed", "failed")
+PAYMENT_STATUSES = (
+    "pending",
+    "succeeded",
+    "failed",
+    "cancelled",
+    "refund_pending",
+    "refunded",
+    "partially_refunded",
+)
+REFUND_STATUSES = ("requested", "pending", "completed", "failed")
 
 
 class Payment(Base):
+    """A single demo-payment attempt for an order. Payments are DEMO-only: the
+    server creates a pending transaction and only settles it after the client
+    performs a demo success/failure action that the server re-validates
+    (ownership, order, amount, currency, allowed state)."""
+
     __tablename__ = "payments"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
@@ -26,6 +39,7 @@ class Payment(Base):
     user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
     payment_method = Column(String(50), nullable=False)  # card / paypal / cod / upi / ...
     amount = Column(Numeric(10, 2), nullable=False)
+    currency = Column(String(3), nullable=False, default="INR")
     status = Column(String(20), nullable=False, default="pending")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -41,14 +55,17 @@ class Payment(Base):
 
 
 class PaymentTransaction(Base):
+    """Audit trail of individual demo provider operations (charge/refund)."""
+
     __tablename__ = "payment_transactions"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
     payment_id = Column(String, ForeignKey("payments.id"), nullable=False, index=True)
     type = Column(String(30), nullable=False, default="charge")  # charge / refund
     amount = Column(Numeric(10, 2), nullable=False)
-    status = Column(String(20), nullable=False)  # succeeded / failed
-    reference = Column(String(100), nullable=False, unique=True)  # provider/demo txn id
+    status = Column(String(20), nullable=False)  # pending / succeeded / failed / cancelled
+    provider = Column(String(20), nullable=False, default="DEMO")
+    reference = Column(String(100), nullable=False, unique=True)  # DEMO provider txn id
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     payment = relationship("Payment", back_populates="transactions")
@@ -59,6 +76,9 @@ class PaymentTransaction(Base):
 
 
 class Refund(Base):
+    """Demo refund bound to a captured payment. Idempotent via idempotency_key;
+    `provider_reference` lets the demo webhook identify and complete it."""
+
     __tablename__ = "refunds"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
@@ -67,6 +87,8 @@ class Refund(Base):
     amount = Column(Numeric(10, 2), nullable=False)
     status = Column(String(20), nullable=False, default="requested")
     reason = Column(Text, nullable=True)
+    idempotency_key = Column(String(100), nullable=True, unique=True, index=True)
+    provider_reference = Column(String(100), nullable=True, unique=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

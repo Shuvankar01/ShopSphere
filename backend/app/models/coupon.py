@@ -3,7 +3,7 @@ import uuid
 from decimal import Decimal
 from sqlalchemy import (
     Column, String, Integer, ForeignKey, DateTime, Numeric, Boolean,
-    CheckConstraint, UniqueConstraint,
+    CheckConstraint, Index, Text,
 )
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
@@ -11,6 +11,10 @@ from app.models.base import Base
 
 
 class Coupon(Base):
+    """Promotion rules: percent/fixed, min order amount, max discount cap,
+    usage limits (global + per user), validity window, and optional product /
+    category restrictions (JSON arrays of ids)."""
+
     __tablename__ = "coupons"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
@@ -18,10 +22,15 @@ class Coupon(Base):
     discount_type = Column(String(20), nullable=False, default="percent")  # percent / fixed
     discount_value = Column(Numeric(10, 2), nullable=False)
     min_order_amount = Column(Numeric(10, 2), nullable=True)
-    max_uses = Column(Integer, nullable=True)  # NULL = unlimited
+    max_discount_amount = Column(Numeric(10, 2), nullable=True)  # cap for percent discounts
+    max_uses = Column(Integer, nullable=True)  # NULL = unlimited (global)
     used_count = Column(Integer, nullable=False, default=0)
+    per_user_limit = Column(Integer, nullable=False, default=1)
     starts_at = Column(DateTime(timezone=True), nullable=True)
     ends_at = Column(DateTime(timezone=True), nullable=True)
+    # JSON arrays of ids — when set, the coupon only applies to matching lines.
+    applies_to_product_ids = Column(Text, nullable=True)
+    applies_to_category_ids = Column(Text, nullable=True)
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -38,6 +47,7 @@ class Coupon(Base):
             "discount_type <> 'percent' OR discount_value <= 100",
             name="ck_coupon_percent_lte_100",
         ),
+        CheckConstraint("per_user_limit > 0", name="ck_coupon_per_user_limit_positive"),
     )
 
 
@@ -55,7 +65,8 @@ class CouponUsage(Base):
     coupon = relationship("Coupon", back_populates="usages")
 
     __table_args__ = (
-        # one use per customer per coupon (simple, enforceable rule)
-        UniqueConstraint("coupon_id", "user_id", name="uq_coupon_usage_per_user"),
+        # Per-user usage limit is enforced with a row lock at checkout, so no
+        # uniqueness constraint here (it would cap every coupon at 1 use/user).
+        Index("ix_coupon_usages_coupon_user", "coupon_id", "user_id"),
         CheckConstraint("discount_amount > 0", name="ck_coupon_usage_amount_positive"),
     )

@@ -15,16 +15,18 @@ class Return(Base):
     order_id = Column(String, ForeignKey("orders.id"), nullable=False, index=True)
     user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
     status = Column(String(20), nullable=False, default="requested")
-    # requested / approved / rejected / completed
+    # requested / approved / rejected / received / completed / cancelled
     reason = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     items = relationship("ReturnItem", back_populates="return_request", cascade="all, delete-orphan")
+    order = relationship("Order")
 
     __table_args__ = (
         CheckConstraint(
-            "status IN ('requested', 'approved', 'rejected', 'completed')",
+            "status IN ('requested', 'approved', 'rejected', 'received', "
+            "'completed', 'cancelled')",
             name="ck_return_status",
         ),
     )
