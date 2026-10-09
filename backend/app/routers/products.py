@@ -10,6 +10,7 @@ from app.database.session import get_db
 from app.dependencies.auth import get_current_active_user, get_current_user_optional
 from app.models.user import User
 from app.repositories.inventory_repo import InventoryRepository
+from app.repositories.order_repo import OrderRepository
 from app.repositories.product_repo import ProductRepository
 from app.schemas.product import (
     BrandCreate,
@@ -36,7 +37,11 @@ router = APIRouter(tags=["products"])
 
 
 def get_product_service(db: Session = Depends(get_db)) -> ProductService:
-    return ProductService(ProductRepository(db), InventoryRepository(db))
+    return ProductService(
+        ProductRepository(db),
+        InventoryRepository(db),
+        order_repo=OrderRepository(db),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -255,8 +260,14 @@ def delete_variant(
 # ---------------------------------------------------------------------------
 
 @router.get("/products/{id}/reviews", response_model=List[ReviewResponse])
-def get_reviews(id: str, svc: ProductService = Depends(get_product_service)):
-    return svc.get_reviews(id)
+def get_reviews(
+    id: str,
+    current_user: Optional[User] = Depends(get_current_user_optional),
+    svc: ProductService = Depends(get_product_service),
+):
+    # Public listing shows approved reviews; the requester's own pending rows
+    # are included so authors can see moderation status.
+    return svc.get_reviews(id, current_user)
 
 
 @router.post("/products/{id}/reviews", response_model=ReviewResponse, status_code=201)
@@ -266,4 +277,6 @@ def add_review(
     current_user: User = Depends(get_current_active_user),
     svc: ProductService = Depends(get_product_service),
 ):
+    # Eligibility (a paid purchase from backend order data) is checked in the
+    # service; new reviews start as pending until admin moderation approves them.
     return svc.add_review(id, data, current_user)
