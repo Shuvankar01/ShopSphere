@@ -49,6 +49,7 @@ from app.models import (  # noqa: F401
 
 # Routers
 from app.routers import (
+    addresses,
     admin,
     auth,
     cart,
@@ -57,6 +58,9 @@ from app.routers import (
     orders,
     payments,
     products,
+    refunds,
+    returns,
+    shipping,
     users,
     wishlist,
 )
@@ -90,10 +94,14 @@ app.add_exception_handler(Exception, general_exception_handler)
 # Routers
 app.include_router(auth.router, prefix=settings.API_V1_STR)
 app.include_router(users.router, prefix=settings.API_V1_STR)
+app.include_router(addresses.router, prefix=settings.API_V1_STR)
 app.include_router(products.router, prefix=settings.API_V1_STR)
 app.include_router(cart.router, prefix=settings.API_V1_STR)
+app.include_router(shipping.router, prefix=settings.API_V1_STR)
 app.include_router(orders.router, prefix=settings.API_V1_STR)
 app.include_router(payments.router, prefix=settings.API_V1_STR)
+app.include_router(refunds.router, prefix=settings.API_V1_STR)
+app.include_router(returns.router, prefix=settings.API_V1_STR)
 app.include_router(admin.router, prefix=settings.API_V1_STR)
 app.include_router(inventory.router, prefix=settings.API_V1_STR)
 app.include_router(wishlist.router, prefix=settings.API_V1_STR)
