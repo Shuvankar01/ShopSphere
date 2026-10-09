@@ -34,6 +34,11 @@ class Settings(BaseSettings):
     UPLOAD_DIR: Path = BACKEND_DIR / "uploads"
     MAX_IMAGE_SIZE_MB: int = 5
 
+    # Checkout pricing: simple, configurable demo tax (no external tax API) and
+    # the currency stamped on every demo payment transaction.
+    TAX_RATE: float = 0.10  # applied to (subtotal - coupon discount); goods only
+    CURRENCY: str = "INR"
+
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     @classmethod
     def assemble_cors_origins(cls, v):

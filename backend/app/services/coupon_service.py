@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import List
 
-from app.core.exceptions import ConflictException, ForbiddenException, NotFoundException
+from app.core.exceptions import BadRequestException, ConflictException, ForbiddenException, NotFoundException
 from app.models.user import User
 from app.repositories.coupon_repo import CouponRepository
 from app.schemas.coupon import CouponCreate, CouponResponse, CouponUpdate
@@ -32,6 +32,10 @@ class CouponService:
         coupon = self.coupon_repo.get(coupon_id)
         if not coupon:
             raise NotFoundException("Coupon not found")
+        if data.per_user_limit is not None and data.per_user_limit <= 0:
+            raise BadRequestException("per_user_limit must be positive")
+        if data.max_discount_amount is not None and data.max_discount_amount <= 0:
+            raise BadRequestException("max_discount_amount must be positive")
         return CouponResponse.model_validate(self.coupon_repo.update(coupon, data))
 
     def deactivate_coupon(self, coupon_id: str, current_user: User) -> None:

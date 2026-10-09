@@ -15,6 +15,7 @@ from app.core.exceptions import (
 )
 from app.models.user import User
 from app.repositories.inventory_repo import InventoryRepository
+from app.repositories.order_repo import OrderRepository
 from app.repositories.product_repo import ProductRepository
 from app.schemas.product import (
     BrandCreate,
@@ -44,10 +45,12 @@ class ProductService:
         product_repo: ProductRepository,
         inventory_repo: Optional[InventoryRepository] = None,
         image_storage: Optional[ImageStorage] = None,
+        order_repo: Optional[OrderRepository] = None,
     ):
         self.product_repo = product_repo
         self.inventory_repo = inventory_repo
         self.image_storage = image_storage or ImageStorage()
+        self.order_repo = order_repo
 
     # ------------------------------------------------------------------
     # Categories
@@ -386,26 +389,78 @@ class ProductService:
         return [ProductResponse.model_validate(p) for p in related]
 
     # ------------------------------------------------------------------
-    # Reviews
+    # Reviews (eligibility is derived from backend order data; moderation is
+    # admin-controlled; `is_verified` is never client-supplied)
     # ------------------------------------------------------------------
 
-    def get_reviews(self, product_id: str) -> List[ReviewResponse]:
+    def get_reviews(self, product_id: str, current_user: Optional[User] = None) -> List[ReviewResponse]:
         product = self.product_repo.get_product(product_id)
         if not product:
             raise NotFoundException("Product not found")
-        reviews = self.product_repo.get_reviews(product_id)
+        viewer_id = current_user.id if current_user else None
+        reviews = self.product_repo.get_reviews(product_id, viewer_id=viewer_id)
         return [ReviewResponse.model_validate(r) for r in reviews]
 
     def add_review(self, product_id: str, data: ReviewCreate, current_user: User) -> ReviewResponse:
         product = self.product_repo.get_product(product_id)
         if not product:
             raise NotFoundException("Product not found")
+
+        # One review per user per product.
         existing = self.product_repo.get_review_by_user_product(current_user.id, product_id)
         if existing:
             raise ConflictException("You have already reviewed this product")
-        review = self.product_repo.create_review(
-            data=data, product_id=product_id,
-            user_id=current_user.id, user_name=current_user.full_name,
+
+        # Eligibility + verified badge come from backend order data, never from
+        # the client.
+        if self.order_repo is None:
+            raise BadRequestException("Review eligibility is unavailable")
+        purchased = self.order_repo.has_paid_purchase(current_user.id, product_id)
+        if not purchased:
+            raise BadRequestException(
+                "Only verified purchasers can review this product"
+            )
+        delivered = self.order_repo.has_paid_purchase(
+            current_user.id, product_id, delivered=True
         )
-        self.product_repo.update_product_rating(product)
+
+        review = self.product_repo.create_review(
+            data=data,
+            product_id=product_id,
+            user_id=current_user.id,
+            user_name=current_user.full_name,
+            is_verified=delivered,
+        )
+        # Pending reviews are not yet part of the published rating.
+        self.product_repo.db.commit()
+        return ReviewResponse.model_validate(review)
+
+    # --- moderation (admin) ---
+
+    def list_reviews_for_moderation(
+        self, current_user: User, moderation_status: Optional[str] = None
+    ) -> List[ReviewResponse]:
+        if current_user.role != "admin":
+            raise ForbiddenException("Only admins can moderate reviews")
+        reviews = self.product_repo.get_all_reviews(moderation_status)
+        return [ReviewResponse.model_validate(r) for r in reviews]
+
+    def moderate_review(
+        self, review_id: str, action: str, current_user: User
+    ) -> ReviewResponse:
+        if current_user.role != "admin":
+            raise ForbiddenException("Only admins can moderate reviews")
+        review = self.product_repo.get_review(review_id)
+        if not review:
+            raise NotFoundException("Review not found")
+        if action == "approve":
+            self.product_repo.set_review_moderation(review, "approved")
+        else:
+            self.product_repo.set_review_moderation(review, "rejected")
+        product = self.product_repo.get_product(review.product_id)
+        if product:
+            # Recompute the published aggregate (approved only).
+            self.product_repo.update_product_rating(product)
+        else:
+            self.product_repo.db.commit()
         return ReviewResponse.model_validate(review)

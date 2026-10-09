@@ -17,6 +17,7 @@ from app.repositories.product_repo import ProductRepository
 from app.repositories.wishlist_repo import WishlistRepository
 from app.schemas.cart import CartResponse
 from app.schemas.wishlist import WishlistResponse
+from app.services.cart_service import cart_coupon_lines
 
 
 class WishlistService:
@@ -97,7 +98,8 @@ class WishlistService:
         subtotal = self.cart_repo.calculate_subtotal(cart)
         discount = Decimal("0.00")
         if cart.coupon is not None and self.coupon_repo is not None:
-            discount = self.coupon_repo.discount_for(cart.coupon, subtotal)
+            lines = cart_coupon_lines(cart)
+            discount = self.coupon_repo.discount_for(cart.coupon, subtotal, lines)
             if discount > subtotal:
                 discount = subtotal
             self.cart_repo.set_coupon(cart, cart.coupon, discount)

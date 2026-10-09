@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import List
 
 from app.core.exceptions import (
     BadRequestException,
@@ -9,10 +10,39 @@ from app.core.exceptions import (
 )
 from app.models.user import User
 from app.repositories.cart_repo import CartRepository
-from app.repositories.coupon_repo import CouponRepository
+from app.repositories.coupon_repo import CouponLine, CouponRepository
 from app.repositories.inventory_repo import InventoryRepository
 from app.repositories.product_repo import ProductRepository
 from app.schemas.cart import CartResponse
+
+
+def cart_coupon_lines(cart) -> List[CouponLine]:
+    """Project cart items into CouponLine objects for restriction checks."""
+    lines = []
+    for item in cart.items:
+        product = item.product
+        if not product:
+            continue
+        price = (
+            product.discount_price
+            if product.discount_price is not None
+            else product.price
+        )
+        lines.append(
+            CouponLine(
+                id=product.id,
+                category_id=product.category_id,
+                price=Decimal(str(price)),
+                discount_price=(
+                    product.discount_price
+                    if product.discount_price is not None
+                    else None
+                ),
+                quantity=item.quantity,
+                is_active=bool(product.is_active),
+            )
+        )
+    return lines
 
 
 class CartService:
@@ -27,6 +57,9 @@ class CartService:
         self.product_repo = product_repo
         self.inventory_repo = inventory_repo
         self.coupon_repo = coupon_repo
+
+    def _coupon_lines(self, cart) -> List[CouponLine]:
+        return cart_coupon_lines(cart)
 
     def _build_response(self, cart) -> CartResponse:
         """Recalculate subtotal/discount before returning. The frontend never
@@ -53,7 +86,8 @@ class CartService:
         still only recorded at checkout."""
         subtotal = self.cart_repo.calculate_subtotal(cart)
         if cart.coupon is not None and self.coupon_repo is not None:
-            discount = self.coupon_repo.discount_for(cart.coupon, subtotal)
+            lines = self._coupon_lines(cart)
+            discount = self.coupon_repo.discount_for(cart.coupon, subtotal, lines)
             if discount > subtotal:
                 discount = subtotal
             self.cart_repo.set_coupon(cart, cart.coupon, discount)
@@ -135,12 +169,13 @@ class CartService:
             raise NotFoundException(f"Coupon code '{code.strip().upper()}' not found")
 
         subtotal = self.cart_repo.calculate_subtotal(cart)
-        if not self.coupon_repo.is_usable(coupon, current_user.id, subtotal):
+        lines = self._coupon_lines(cart)
+        if not self.coupon_repo.is_usable(coupon, current_user.id, subtotal, lines):
             raise BadRequestException("Coupon is not applicable to this cart")
 
         # Usage is recorded at checkout, not here, so applying/removing a coupon
         # while shopping does not consume it.
-        discount = self.coupon_repo.discount_for(coupon, subtotal)
+        discount = self.coupon_repo.discount_for(coupon, subtotal, lines)
         self.cart_repo.set_coupon(cart, coupon, discount)
         return self._build_response(cart)
 
