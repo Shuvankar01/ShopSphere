@@ -12,7 +12,10 @@ import type { OrderStatus } from "@/lib/types";
 const statusColor: Record<OrderStatus, string> = {
   pending: "bg-yellow-500/15 text-yellow-700 dark:text-yellow-300",
   confirmed: "bg-blue-500/15 text-blue-700 dark:text-blue-300",
+  processing: "bg-sky-500/15 text-sky-700 dark:text-sky-300",
+  packed: "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300",
   shipped: "bg-purple-500/15 text-purple-700 dark:text-purple-300",
+  out_for_delivery: "bg-teal-500/15 text-teal-700 dark:text-teal-300",
   delivered: "bg-accent/15 text-accent-foreground",
   cancelled: "bg-destructive/15 text-destructive",
 };

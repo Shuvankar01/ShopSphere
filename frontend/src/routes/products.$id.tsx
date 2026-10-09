@@ -424,11 +424,11 @@ function ProductDetail() {
         </section>
 
         {/* Related products */}
-        {related.data && related.data.length > 0 && (
+        {related.data && related.data.items.length > 0 && (
           <section className="mt-16">
             <h2 className="font-display text-2xl font-semibold">Related products</h2>
             <div className="mt-6">
-              <ProductGrid products={related.data.slice(0, 4)} loading={related.isLoading} />
+              <ProductGrid products={related.data.items.slice(0, 4)} loading={related.isLoading} />
             </div>
           </section>
         )}

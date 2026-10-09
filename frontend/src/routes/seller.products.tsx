@@ -36,7 +36,9 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RequireAuth } from "@/lib/auth/RequireAuth";
-import { productsApi, categoriesApi, brandsApi } from "@/lib/api/products";
+import { productsApi } from "@/lib/api/products";
+import { categoriesApi } from "@/lib/api/categories";
+import { brandsApi } from "@/lib/api/brands";
 import { productSchema, variantSchema } from "@/lib/schemas";
 import { formatCurrency } from "@/lib/format";
 import type { Brand, Product, ProductVariant } from "@/lib/types";
@@ -66,7 +68,7 @@ function SellerProducts() {
     // restored. For sellers a client-supplied seller_id is overridden; for
     // admins it keeps the page scoped to their own listings.
     queryFn: () =>
-      productsApi.list({ limit: 100, include_inactive: true, seller_id: user?.id }, { auth: true }),
+      productsApi.list({ limit: 100, include_inactive: true, seller_id: user?.id }),
     enabled: !!user?.id,
   });
   const categories = useQuery({ queryKey: ["categories"], queryFn: () => categoriesApi.list() });

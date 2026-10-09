@@ -4,7 +4,8 @@ import { ArrowRight, ShieldCheck, Truck, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { ProductGrid } from "@/components/products/ProductGrid";
 import { Button } from "@/components/ui/button";
-import { productsApi, categoriesApi } from "@/lib/api/products";
+import { categoriesApi } from "@/lib/api/categories";
+import { productsApi } from "@/lib/api/products";
 
 export const Route = createFileRoute("/")({
   head: () => ({

@@ -14,7 +14,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { productsApi, categoriesApi, brandsApi } from "@/lib/api/products";
+import { productsApi } from "@/lib/api/products";
+import { categoriesApi } from "@/lib/api/categories";
+import { brandsApi } from "@/lib/api/brands";
 
 type Sort = "newest" | "price_asc" | "price_desc" | "rating";
 
