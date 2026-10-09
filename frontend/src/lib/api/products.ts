@@ -23,80 +23,57 @@ export interface ProductQuery {
   seller_id?: string;
   page?: number;
   limit?: number;
-  /** Staff only (401/403 otherwise): include unpublished (inactive) products. */
   include_inactive?: boolean;
 }
 
-/** Convert Decimal-string fields from the wire into numbers. */
-export function mapProduct(p: Product): Product {
+export function mapProduct(p: any): Product {
   return {
     ...p,
     price: num(p.price) ?? 0,
     discount_price: numOrNull(p.discount_price),
     rating: num(p.rating),
-    variants: (p.variants ?? []).map((v) => ({
+    variants: (p.variants ?? []).map((v: any) => ({
       ...v,
       price_override: numOrNull(v.price_override),
+      attributes: typeof v.attributes === "string" ? v.attributes : JSON.stringify(v.attributes ?? {}),
     })),
   };
 }
 
-const mapImages = (images: ProductImage[]): ProductImage[] => (images ?? []).map((i) => ({ ...i }));
+export function mapReview(r: any): Review {
+  return {
+    ...r,
+    rating: Number(r.rating) || 0,
+    images: r.images ?? [],
+    is_verified: Boolean(r.is_verified),
+  };
+}
 
 export const productsApi = {
-  list: (q: ProductQuery = {}, opts: { auth?: boolean } = {}) =>
+  list: (query: ProductQuery = {}) =>
     api
-      .get<Paginated<Product>>("/api/products", {
-        query: q as Record<string, string | number | boolean>,
-        auth: opts.auth ?? false,
-      })
+      .get<Paginated<Product>>("/api/products", { query: query as Record<string, any> })
       .then((res) => ({ ...res, items: res.items.map(mapProduct) })),
-  get: (id: string) =>
-    api
-      .get<Product>(`/api/products/${id}`, { auth: false })
-      .then((p) => ({ ...mapProduct(p), images: mapImages(p.images) })),
-  related: (id: string) =>
-    api
-      .get<Product[]>(`/api/products/${id}/related`, { auth: false })
-      .then((items) => items.map(mapProduct)),
+  get: (id: string) => api.get<Product>(`/api/products/${id}`).then(mapProduct),
   create: (data: Partial<Product>) => api.post<Product>("/api/products", data).then(mapProduct),
-  update: (id: string, data: Partial<Product>) =>
-    api.put<Product>(`/api/products/${id}`, data).then(mapProduct),
+  update: (id: string, data: Partial<Product>) => api.put<Product>(`/api/products/${id}`, data).then(mapProduct),
   remove: (id: string) => api.del<void>(`/api/products/${id}`),
+  getReviews: (id: string) => api.get<Review[]>(`/api/products/${id}/reviews`).then((items) => items.map(mapReview)),
+  reviews: (id: string) => api.get<Review[]>(`/api/products/${id}/reviews`).then((items) => items.map(mapReview)),
+  related: (id: string) => api.get<Paginated<Product>>(`/api/products/${id}/related`).then((res) => ({ ...res, items: res.items.map(mapProduct) })),
+  addReview: (id: string, data: { rating: number; comment: string; image_urls?: string[] }) =>
+    api.post<Review>(`/api/products/${id}/reviews`, data).then(mapReview),
   uploadImage: (id: string, file: File) => {
-    const fd = new FormData();
-    fd.append("file", file);
-    return api.post<ProductImage>(`/api/products/${id}/images/upload`, fd);
+    const form = new FormData();
+    form.append("file", file);
+    return api.post(`/api/products/${id}/images`, form);
   },
   deleteImage: (id: string, imageId: string) =>
-    api.del<void>(`/api/products/${id}/images/${imageId}`),
-  createVariant: (id: string, data: Partial<ProductVariant>) =>
-    api.post<ProductVariant>(`/api/products/${id}/variants`, data).then((v) => ({
-      ...v,
-      price_override: numOrNull(v.price_override),
-    })),
-  updateVariant: (id: string, variantId: string, data: Partial<ProductVariant>) =>
-    api.put<ProductVariant>(`/api/products/${id}/variants/${variantId}`, data).then((v) => ({
-      ...v,
-      price_override: numOrNull(v.price_override),
-    })),
+    api.del(`/api/products/${id}/images/${imageId}`),
+  createVariant: (id: string, data: any) =>
+    api.post(`/api/products/${id}/variants`, data),
+  updateVariant: (id: string, variantId: string, data: any) =>
+    api.put(`/api/products/${id}/variants/${variantId}`, data),
   deleteVariant: (id: string, variantId: string) =>
-    api.del<void>(`/api/products/${id}/variants/${variantId}`),
-  reviews: (id: string) => api.get<Review[]>(`/api/products/${id}/reviews`, { auth: false }),
-  addReview: (id: string, data: { rating: number; comment: string }) =>
-    api.post<Review>(`/api/products/${id}/reviews`, data),
-};
-
-export const categoriesApi = {
-  list: () => api.get<Category[]>("/api/categories", { auth: false }),
-};
-
-export const brandsApi = {
-  list: () => api.get<Brand[]>("/api/brands", { auth: false }),
-  create: (data: { name: string; description?: string; logo_url?: string }) =>
-    api.post<Brand>("/api/brands", data),
-  update: (
-    id: string,
-    data: { name?: string; description?: string; logo_url?: string; is_active?: boolean },
-  ) => api.put<Brand>(`/api/brands/${id}`, data),
+    api.del(`/api/products/${id}/variants/${variantId}`),
 };

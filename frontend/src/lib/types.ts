@@ -91,8 +91,31 @@ export interface Cart {
   item_count: number;
 }
 
-export type OrderStatus = "pending" | "confirmed" | "shipped" | "delivered" | "cancelled";
-export type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
+export type OrderStatus =
+  | "pending"
+  | "confirmed"
+  | "processing"
+  | "packed"
+  | "shipped"
+  | "out_for_delivery"
+  | "delivered"
+  | "cancelled";
+
+export type PaymentStatus =
+  | "pending"
+  | "paid"
+  | "failed"
+  | "refunded"
+  | "partially_refunded";
+
+export type ShipmentStatus =
+  | "pending"
+  | "processing"
+  | "packed"
+  | "shipped"
+  | "out_for_delivery"
+  | "delivered"
+  | "cancelled";
 
 export interface OrderItem {
   id: string;
@@ -102,18 +125,40 @@ export interface OrderItem {
   price: number;
 }
 
+export interface OrderStatusHistoryEntry {
+  from_status?: string | null;
+  to_status: string;
+  changed_by?: string | null;
+  note?: string | null;
+  created_at: string;
+}
+
 export interface Order {
   id: string;
   user_id: string;
   items: OrderItem[];
+  subtotal: number;
+  discount_amount: number;
+  tax_amount: number;
+  shipping_cost: number;
   total_amount: number;
   order_status: OrderStatus;
   payment_status: PaymentStatus;
   payment_method: string;
+  shipping_method: string;
   shipping_address: string;
+  shipping_address_snapshot?: string | null;
+  tracking_number?: string | null;
+  shipment_status: ShipmentStatus;
   coupon_id?: string | null;
-  discount_amount: number;
+  status_history: OrderStatusHistoryEntry[];
   created_at: string;
+}
+
+export interface ReviewImage {
+  id: string;
+  url: string;
+  sort_order: number;
 }
 
 export interface Review {
@@ -123,7 +168,123 @@ export interface Review {
   product_id: string;
   rating: number;
   comment: string;
+  is_verified?: boolean;
+  moderation_status?: "pending" | "approved" | "rejected";
+  images?: ReviewImage[];
   created_at: string;
+}
+
+export interface Address {
+  id: string;
+  label: string;
+  recipient_name: string;
+  phone?: string | null;
+  line1: string;
+  line2?: string | null;
+  city: string;
+  state?: string | null;
+  postal_code: string;
+  country: string;
+  is_default: boolean;
+  is_active?: boolean;
+  created_at?: string;
+}
+
+export interface AddressInput {
+  label?: string;
+  recipient_name: string;
+  phone?: string;
+  line1: string;
+  line2?: string;
+  city: string;
+  state?: string;
+  postal_code: string;
+  country: string;
+  is_default?: boolean;
+}
+
+export interface ShippingMethod {
+  code: string;
+  name: string;
+  /** Decimal-string from the wire; APIs normalize to number. */
+  charge: number;
+  estimated_days_min: number;
+  estimated_days_max: number;
+  description: string;
+}
+
+/** Backend-authoritative pre-checkout totals (POST /api/orders/quote). */
+export interface CheckoutQuote {
+  subtotal: number;
+  discount_amount: number;
+  tax_amount: number;
+  shipping_cost: number;
+  total_amount: number;
+  shipping_method: string;
+  shipping_method_name: string;
+  estimated_delivery: string;
+  coupon_code?: string | null;
+  currency: string;
+}
+
+export type PaymentTransactionStatus =
+  | "pending"
+  | "succeeded"
+  | "failed"
+  | "cancelled"
+  | "refunded"
+  | "partially_refunded";
+
+export interface PaymentTransaction {
+  id: string;
+  order_id: string;
+  amount: number;
+  currency: string;
+  provider: string;
+  transaction_id: string;
+  status: PaymentTransactionStatus;
+  created_at: string;
+}
+
+export type RefundStatus = "pending" | "completed" | "failed" | "cancelled";
+
+export interface Refund {
+  id: string;
+  payment_id: string;
+  order_id: string;
+  amount: number;
+  status: RefundStatus;
+  reason?: string | null;
+  idempotency_key?: string | null;
+  provider_reference?: string | null;
+  created_at: string;
+}
+
+export type ReturnStatus =
+  | "requested"
+  | "approved"
+  | "rejected"
+  | "received"
+  | "completed"
+  | "cancelled";
+
+export interface ReturnItem {
+  id: string;
+  order_item_id: string;
+  quantity: number;
+  reason?: string | null;
+  created_at?: string;
+}
+
+export interface ReturnRequest {
+  id: string;
+  order_id: string;
+  user_id: string;
+  status: ReturnStatus;
+  reason: string;
+  items: ReturnItem[];
+  created_at: string;
+  updated_at?: string;
 }
 
 export interface Coupon {
