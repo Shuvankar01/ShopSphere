@@ -204,6 +204,8 @@ class PaginatedProducts(BaseModel):
 class ReviewCreate(BaseModel):
     rating: int
     comment: str
+    # Optional already-uploaded image URLs (via the product image upload flow).
+    image_urls: List[str] = []
 
     @field_validator("rating")
     @classmethod
@@ -211,6 +213,21 @@ class ReviewCreate(BaseModel):
         if not (1 <= v <= 5):
             raise ValueError("Rating must be between 1 and 5")
         return v
+
+    @field_validator("image_urls")
+    @classmethod
+    def limit_images(cls, v: List[str]) -> List[str]:
+        if len(v) > 5:
+            raise ValueError("A review can have at most 5 images")
+        return v
+
+
+class ReviewImageResponse(BaseModel):
+    id: str
+    url: str
+    sort_order: int
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ReviewResponse(BaseModel):
@@ -220,6 +237,20 @@ class ReviewResponse(BaseModel):
     product_id: str
     rating: int
     comment: str
+    is_verified: bool = False
+    moderation_status: str = "approved"
+    images: List[ReviewImageResponse] = []
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ReviewModerationUpdate(BaseModel):
+    action: str  # approve / reject
+
+    @field_validator("action")
+    @classmethod
+    def valid_action(cls, v: str) -> str:
+        if v not in ("approve", "reject"):
+            raise ValueError("action must be 'approve' or 'reject'")
+        return v

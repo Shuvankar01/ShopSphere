@@ -14,6 +14,7 @@ from app.models.product import (
     ProductImage,
     ProductVariant,
     Review,
+    ReviewImage,
 )
 from app.schemas.product import (
     BrandCreate,
@@ -291,13 +292,25 @@ class ProductRepository:
     # Reviews
     # ------------------------------------------------------------------
 
-    def get_reviews(self, product_id: str) -> List[Review]:
-        return (
-            self.db.query(Review)
-            .filter(Review.product_id == product_id)
-            .order_by(desc(Review.created_at))
-            .all()
+    def get_reviews(self, product_id: str, viewer_id: Optional[str] = None) -> List[Review]:
+        """Approved reviews, plus (for the logged-in viewer) their own pending /
+        rejected rows so authors can see moderation status.""" 
+        query = self.db.query(Review).options(joinedload(Review.images)).filter(
+            Review.product_id == product_id
         )
+        query = query.filter(
+            (Review.moderation_status == "approved") | (Review.user_id == viewer_id)
+        )
+        return query.order_by(desc(Review.created_at)).all()
+
+    def get_all_reviews(self, moderation_status: Optional[str] = None) -> List[Review]:
+        query = self.db.query(Review).options(joinedload(Review.images))
+        if moderation_status:
+            query = query.filter(Review.moderation_status == moderation_status)
+        return query.order_by(desc(Review.created_at)).all()
+
+    def get_review(self, review_id: str) -> Optional[Review]:
+        return self.db.query(Review).filter(Review.id == review_id).first()
 
     def get_review_by_user_product(self, user_id: str, product_id: str) -> Optional[Review]:
         return (
@@ -307,21 +320,40 @@ class ProductRepository:
         )
 
     def create_review(
-        self, data: ReviewCreate, product_id: str, user_id: str, user_name: str
+        self, data: ReviewCreate, product_id: str, user_id: str, user_name: str, is_verified: bool
     ) -> Review:
         review = Review(
             product_id=product_id,
             user_id=user_id,
             user_name=user_name,
-            **data.model_dump(),
+            rating=data.rating,
+            comment=data.comment,
+            is_verified=is_verified,
+            moderation_status="pending",
         )
         self.db.add(review)
-        self.db.commit()
-        self.db.refresh(review)
+        self.db.flush()
+        for index, url in enumerate(data.image_urls or []):
+            self.db.add(ReviewImage(review_id=review.id, url=url, sort_order=index))
+        self.db.flush()
         return review
 
+    def set_review_moderation(self, review: Review, status: str) -> None:
+        review.moderation_status = status
+        # autoflush is disabled on the session factory; flush so downstream
+        # queries (rating aggregate recompute) observe the new status.
+        self.db.flush()
+
     def update_product_rating(self, product: Product) -> None:
-        reviews = self.get_reviews(product.id)
+        """Rating aggregate counts APPROVED reviews only."""
+        reviews = (
+            self.db.query(Review)
+            .filter(
+                Review.product_id == product.id,
+                Review.moderation_status == "approved",
+            )
+            .all()
+        )
         if reviews:
             product.review_count = len(reviews)
             product.rating = round(
