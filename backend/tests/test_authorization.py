@@ -308,20 +308,23 @@ class TestPayments:
         )
         assert r.status_code == 200, r.text
         body = r.json()
-        assert body["status"] == "succeeded"
-        assert body["transaction_id"].startswith("txn_")
+        # Two-phase demo flow: create returns a PENDING transaction; the client
+        # must then perform an explicit demo success action before anything
+        # moves. Providers/keys are never involved.
+        assert body["status"] == "pending"
+        assert body["provider"] == "DEMO"
+        assert body["transaction_id"].startswith("demo_")
 
-        # Order state transitioned server-side
+        # Still unpaid until the explicit demo action.
         r2 = client.get(f"/api/orders/{order['id']}", headers=AUTH(customer_token))
-        assert r2.json()["payment_status"] == "paid"
-        assert r2.json()["order_status"] == "confirmed"
+        assert r2.json()["payment_status"] == "pending"
 
-        # Rows persisted
+        # Rows persisted (pending charge attempt + DEMO provider).
         payment = db.query(Payment).filter(Payment.order_id == order["id"]).one()
         assert str(payment.amount) == str(
             db.query(Order).filter(Order.id == order["id"]).one().total_amount
         )
-        assert payment.status == "succeeded"
+        assert payment.status == "pending"
         txn = (
             db.query(PaymentTransaction)
             .filter(PaymentTransaction.payment_id == payment.id)
@@ -329,6 +332,20 @@ class TestPayments:
         )
         assert txn.reference == body["transaction_id"]
         assert txn.type == "charge"
+        assert txn.provider == "DEMO"
+
+        # Demo success action — server re-validates the transaction, then pays.
+        done = client.post(
+            f"/api/payment/{body['transaction_id']}/complete",
+            json={"result": "success"},
+            headers=AUTH(customer_token),
+        )
+        assert done.status_code == 200, done.text
+        assert done.json()["status"] == "succeeded"
+
+        got = client.get(f"/api/orders/{order['id']}", headers=AUTH(customer_token))
+        assert got.json()["payment_status"] == "paid"
+        assert got.json()["order_status"] == "confirmed"
 
     def test_double_payment_conflict(self, client, customer_token, product):
         order = create_order(client, customer_token, product)
@@ -338,12 +355,25 @@ class TestPayments:
             headers=AUTH(customer_token),
         )
         assert first.status_code == 200
+        assert first.json()["status"] == "pending"
         second = client.post(
             "/api/payment/create",
             json={"order_id": order["id"], "payment_method": "card"},
             headers=AUTH(customer_token),
         )
         assert second.status_code == 409
+        # A failed attempt can be retried.
+        client.post(
+            f"/api/payment/{first.json()['transaction_id']}/complete",
+            json={"result": "failure"},
+            headers=AUTH(customer_token),
+        )
+        third = client.post(
+            "/api/payment/create",
+            json={"order_id": order["id"], "payment_method": "card"},
+            headers=AUTH(customer_token),
+        )
+        assert third.status_code == 200
 
     def test_paypal_checkout_supported(self, client, customer_token, product):
         # The checkout UI offers card/paypal/cod — paypal must not 422.
@@ -385,10 +415,23 @@ class TestAdminOnly:
 # ---------------------------------------------------------------------------
 
 class TestRatingPersistence:
-    def test_review_updates_product_rating_in_response_and_db(
-        self, client, product, customer_token, db
+    def test_review_updates_product_rating_after_purchase_and_moderation(
+        self, client, product, customer_token, admin_token, db
     ):
         from app.models.product import Product
+
+        # Verified purchase first: order + demo payment success.
+        order = create_order(client, customer_token, product)
+        pay = client.post(
+            "/api/payment/create",
+            json={"order_id": order["id"], "payment_method": "card"},
+            headers=AUTH(customer_token),
+        ).json()
+        client.post(
+            f"/api/payment/{pay['transaction_id']}/complete",
+            json={"result": "success"},
+            headers=AUTH(customer_token),
+        )
 
         r = client.post(
             f"/api/products/{product['id']}/reviews",
@@ -396,6 +439,22 @@ class TestRatingPersistence:
             headers=AUTH(customer_token),
         )
         assert r.status_code == 201, r.text
+        review_id = r.json()["id"]
+        # new reviews start pending — not yet part of the published rating
+        assert r.json()["moderation_status"] == "pending"
+
+        got = client.get(f"/api/products/{product['id']}").json()
+        assert got["rating"] is None
+        assert got["review_count"] == 0
+
+        # Admin moderation approves the review -> rating updates.
+        mod = client.post(
+            f"/api/admin/reviews/{review_id}/moderate",
+            json={"action": "approve"},
+            headers=AUTH(admin_token),
+        )
+        assert mod.status_code == 200, mod.text
+        assert mod.json()["moderation_status"] == "approved"
 
         got = client.get(f"/api/products/{product['id']}").json()
         assert got["rating"] is not None
@@ -405,3 +464,22 @@ class TestRatingPersistence:
         row = db.query(Product).filter(Product.id == product["id"]).one()
         assert row.rating == 4
         assert row.review_count == 1
+
+    def test_review_requires_paid_purchase(self, client, product, customer_token):
+        """A customer who never bought the product cannot review it — the
+        frontend's 'verified purchase' claim is never trusted."""
+        r = client.post(
+            f"/api/products/{product['id']}/reviews",
+            json={"rating": 5, "comment": "Not a buyer"},
+            headers=AUTH(customer_token),
+        )
+        assert r.status_code == 400, r.text
+
+    def test_unauth_review_rejected(self, client, product):
+        assert (
+            client.post(
+                f"/api/products/{product['id']}/reviews",
+                json={"rating": 5, "comment": "anon"},
+            ).status_code
+            == 401
+        )

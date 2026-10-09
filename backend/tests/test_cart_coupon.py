@@ -141,6 +141,9 @@ class TestCartCoupon:
 
 class TestCheckoutDiscount:
     def test_order_total_reflects_coupon(self, client, admin_token, customer_token, product):
+        from app.core.config import settings
+        from app.services import shipping
+
         _make_coupon(client, admin_token)
         ch = _auth(customer_token)
         client.post("/api/cart/add", json={"product_id": product["id"], "quantity": 2}, headers=ch)
@@ -155,8 +158,17 @@ class TestCheckoutDiscount:
         order = r.json()
         subtotal = PRODUCT_PRICE * 2
         expected_discount = (subtotal * Decimal("0.2")).quantize(Decimal("0.01"))
+        taxable = subtotal - expected_discount
+        expected_tax = (taxable * Decimal(str(settings.TAX_RATE))).quantize(Decimal("0.01"))
+        expected_shipping = shipping.charge_for("standard")
+
+        assert Decimal(str(order["subtotal"])) == subtotal
         assert Decimal(str(order["discount_amount"])) == expected_discount
-        assert Decimal(str(order["total_amount"])) == subtotal - expected_discount
+        assert Decimal(str(order["tax_amount"])) == expected_tax
+        assert Decimal(str(order["shipping_cost"])) == expected_shipping
+        assert order["shipping_method"] == "standard"
+        # grand total = subtotal - discount + tax + shipping (all backend-computed)
+        assert Decimal(str(order["total_amount"])) == taxable + expected_tax + expected_shipping
         assert order["coupon_id"] is not None
 
     def test_coupon_single_use_per_user_at_checkout(self, client, admin_token, customer_token, product):

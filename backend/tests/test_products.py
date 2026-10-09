@@ -216,8 +216,38 @@ class TestVariants:
 # Reviews
 # ---------------------------------------------------------------------------
 
+def _buy(client, token, product):
+    """Verified purchase: cart → order → demo payment success."""
+    r = client.post(
+        "/api/cart/add",
+        json={"product_id": product["id"], "quantity": 1},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert r.status_code in (200, 201), r.text
+    r = client.post(
+        "/api/orders/create",
+        json={"shipping_address": "1 Test Street, Testville", "payment_method": "card"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert r.status_code == 201, r.text
+    order_id = r.json()["id"]
+    pay = client.post(
+        "/api/payment/create",
+        json={"order_id": order_id, "payment_method": "card"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert pay.status_code == 200, pay.text
+    done = client.post(
+        f"/api/payment/{pay.json()['transaction_id']}/complete",
+        json={"result": "success"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert done.status_code == 200, done.text
+
+
 class TestReviews:
-    def test_add_review(self, client, customer_token, product):
+    def test_add_review(self, client, customer_token, admin_token, product):
+        _buy(client, customer_token, product)
         r = client.post(
             f"/api/products/{product['id']}/reviews",
             json={"rating": 4, "comment": "Great product!"},
@@ -225,17 +255,21 @@ class TestReviews:
         )
         assert r.status_code == 201
         assert r.json()["rating"] == 4
+        # New reviews enter moderation pending (published rating unchanged).
+        assert r.json()["moderation_status"] == "pending"
 
     def test_duplicate_review_rejected(self, client, customer_token, product):
+        _buy(client, customer_token, product)
+        ch = {"Authorization": f"Bearer {customer_token}"}
         client.post(
             f"/api/products/{product['id']}/reviews",
             json={"rating": 5, "comment": "First review"},
-            headers={"Authorization": f"Bearer {customer_token}"},
+            headers=ch,
         )
         r = client.post(
             f"/api/products/{product['id']}/reviews",
             json={"rating": 1, "comment": "Second review"},
-            headers={"Authorization": f"Bearer {customer_token}"},
+            headers=ch,
         )
         assert r.status_code == 409
 

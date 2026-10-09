@@ -264,21 +264,44 @@ class TestSearchFilters:
         r = client.get("/api/products", params={"brand_id": brand["id"], "has_discount": True})
         assert len(r.json()["items"]) == 1
 
-    def test_filter_by_min_rating(self, client, customer_token, category, product):
+    def test_filter_by_min_rating(self, client, customer_token, admin_token, category, product):
+        h = {"Authorization": f"Bearer {customer_token}"}
+        # Verified purchase first (reviews are gated on backend order data).
+        client.post("/api/cart/add", json={"product_id": product["id"], "quantity": 1}, headers=h)
+        order = client.post(
+            "/api/orders/create",
+            json={"shipping_address": "1 Test Rd", "payment_method": "card"},
+            headers=h,
+        ).json()
+        pay = client.post(
+            "/api/payment/create",
+            json={"order_id": order["id"], "payment_method": "card"},
+            headers=h,
+        ).json()
+        client.post(
+            f"/api/payment/{pay['transaction_id']}/complete",
+            json={"result": "success"},
+            headers=h,
+        )
+
         r = client.post(
             f"/api/products/{product['id']}/reviews",
             json={"rating": 5, "comment": "great"},
-            headers={"Authorization": f"Bearer {customer_token}"},
+            headers=h,
         )
         assert r.status_code == 201, r.text
+        # Pending reviews don't drive the published rating until moderation.
+        approve = client.post(
+            f"/api/admin/reviews/{r.json()['id']}/moderate",
+            json={"action": "approve"},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert approve.status_code == 200, approve.text
 
-        r = client.get("/api/products", params={"min_rating": 4, "limit": 50})
-        ids = [p["id"] for p in r.json()["items"]]
-        assert product["id"] in ids
-
-        r = client.get("/api/products", params={"min_rating": 4.8, "limit": 50})
-        ids = [p["id"] for p in r.json()["items"]]
-        assert product["id"] in ids
+        assert product["id"] in [p["id"] for p in
+                                 client.get("/api/products", params={"min_rating": 4, "limit": 50}).json()["items"]]
+        assert product["id"] in [p["id"] for p in
+                                 client.get("/api/products", params={"min_rating": 4.8, "limit": 50}).json()["items"]]
 
     def test_filter_in_stock(self, client, seller_token, category):
         h = {"Authorization": f"Bearer {seller_token}"}
