@@ -51,10 +51,15 @@ from app.models import (  # noqa: F401
 from app.routers import (
     addresses,
     admin,
+    admin_audit,
+    admin_dashboard,
     auth,
+    banners,
     cart,
     coupons,
     inventory,
+    invoices,
+    notifications,
     orders,
     payments,
     products,
@@ -63,6 +68,8 @@ from app.routers import (
     shipping,
     users,
     wishlist,
+    ai,
+    recommendations,
 )
 
 app = FastAPI(
@@ -102,6 +109,13 @@ app.include_router(orders.router, prefix=settings.API_V1_STR)
 app.include_router(payments.router, prefix=settings.API_V1_STR)
 app.include_router(refunds.router, prefix=settings.API_V1_STR)
 app.include_router(returns.router, prefix=settings.API_V1_STR)
+app.include_router(notifications.router, prefix=settings.API_V1_STR)
+app.include_router(banners.router, prefix=settings.API_V1_STR)
+app.include_router(invoices.router, prefix=settings.API_V1_STR)
+app.include_router(ai.router, prefix=settings.API_V1_STR)
+app.include_router(recommendations.router, prefix=settings.API_V1_STR)
+app.include_router(admin_dashboard.router, prefix=settings.API_V1_STR)
+app.include_router(admin_audit.router, prefix=settings.API_V1_STR)
 app.include_router(admin.router, prefix=settings.API_V1_STR)
 app.include_router(inventory.router, prefix=settings.API_V1_STR)
 app.include_router(wishlist.router, prefix=settings.API_V1_STR)
