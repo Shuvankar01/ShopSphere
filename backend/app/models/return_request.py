@@ -8,14 +8,13 @@ from sqlalchemy.orm import relationship
 from app.models.base import Base
 
 
-class Return(Base):
+class ReturnRequest(Base):
     __tablename__ = "returns"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
     order_id = Column(String, ForeignKey("orders.id"), nullable=False, index=True)
     user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
     status = Column(String(20), nullable=False, default="requested")
-    # requested / approved / rejected / received / completed / cancelled
     reason = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -32,6 +31,10 @@ class Return(Base):
     )
 
 
+# Backward compatibility
+Return = ReturnRequest
+
+
 class ReturnItem(Base):
     __tablename__ = "return_items"
 
@@ -42,7 +45,7 @@ class ReturnItem(Base):
     reason = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    return_request = relationship("Return", back_populates="items")
+    return_request = relationship("ReturnRequest", back_populates="items")
 
     __table_args__ = (
         CheckConstraint("quantity > 0", name="ck_return_item_qty_positive"),

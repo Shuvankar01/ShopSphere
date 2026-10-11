@@ -12,10 +12,10 @@ from .order import Order, OrderItem, OrderStatusHistory
 from .wishlist import Wishlist, WishlistItem
 from .payment import Payment, PaymentTransaction, Refund
 from .coupon import Coupon, CouponUsage
-from .return_request import Return, ReturnItem
+from .return_request import ReturnRequest, ReturnItem, Return
 from .notification import Notification
 from .banner import Banner
-from .audit import AuditLog
+from .audit_log import AuditLog
 
 __all__ = [
     "Base",
@@ -44,6 +44,7 @@ __all__ = [
     "Refund",
     "Coupon",
     "CouponUsage",
+    "ReturnRequest",
     "Return",
     "ReturnItem",
     "Notification",

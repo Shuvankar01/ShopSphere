@@ -20,6 +20,7 @@ class User(Base):
     user_roles = relationship("UserRole", back_populates="user", cascade="all, delete-orphan")
     notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
 
+
     __table_args__ = (
         CheckConstraint(
             "role IN ('customer', 'seller', 'admin')",
