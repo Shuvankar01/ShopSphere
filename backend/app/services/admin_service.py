@@ -21,7 +21,20 @@ class AdminService:
         self.order_repo = order_repo
         
     def _check_admin(self, current_user: User):
-        if current_user.role != "admin":
+        roles = []
+        # check role column
+        if hasattr(current_user, "role") and current_user.role:
+            roles.append(str(current_user.role).lower())
+        # check user_roles
+        if hasattr(current_user, "user_roles"):
+            for r in current_user.user_roles:
+                if hasattr(r, "role"):
+                    roles.append(str(r.role).lower())
+                elif hasattr(r, "role_name"):
+                    roles.append(str(r.role_name).lower())
+                elif hasattr(r, "name"):
+                    roles.append(str(r.name).lower())
+        if "admin" not in roles:
             raise ForbiddenException("Admin access required")
 
     def get_dashboard_stats(self, current_user: User) -> AdminStatsResponse:
