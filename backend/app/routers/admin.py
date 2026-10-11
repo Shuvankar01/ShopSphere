@@ -20,7 +20,9 @@ from app.repositories.payment_repo import PaymentRepository
 from app.repositories.inventory_repo import InventoryRepository
 from app.database.session import get_db
 from app.dependencies.auth import get_current_active_user
-from app.models.user import User
+from app.dependencies.roles import require_admin
+from app.repositories.audit_repo import AuditLogRepository
+from app.services.audit_service import AuditService
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -41,6 +43,10 @@ def get_return_service(db: Session = Depends(get_db)) -> ReturnService:
     )
 
 
+def get_audit_service(db: Session = Depends(get_db)) -> AuditService:
+    return AuditService(AuditLogRepository(db))
+
+
 def get_moderation_service(db: Session = Depends(get_db)) -> ProductService:
     return ProductService(
         ProductRepository(db),
@@ -56,21 +62,21 @@ def get_dashboard(
 ):
     return admin_service.get_dashboard_stats(current_user)
 
-@router.get("/users", response_model=List[UserResponse])
+@router.get("/users", response_model=List[UserResponse], dependencies=[Depends(require_admin)])
 def get_users(
     current_user: User = Depends(get_current_active_user),
     admin_service: AdminService = Depends(get_admin_service)
 ):
     return admin_service.get_all_users(current_user)
 
-@router.get("/orders", response_model=List[OrderResponse])
+@router.get("/orders", response_model=List[OrderResponse], dependencies=[Depends(require_admin)])
 def get_orders(
     current_user: User = Depends(get_current_active_user),
     admin_service: AdminService = Depends(get_admin_service)
 ):
     return admin_service.get_all_orders(current_user)
 
-@router.get("/products", response_model=List[ProductResponse])
+@router.get("/products", response_model=List[ProductResponse], dependencies=[Depends(require_admin)])
 def get_products(
     current_user: User = Depends(get_current_active_user),
     admin_service: AdminService = Depends(get_admin_service)
