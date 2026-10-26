@@ -1,9 +1,12 @@
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.exceptions import BaseAPIException
+from app.database.session import get_db
 
 # Database
 from app.middleware.error_handler import (
@@ -52,7 +55,6 @@ from app.routers import (
     addresses,
     admin,
     admin_audit,
-    admin_dashboard,
     auth,
     banners,
     cart,
@@ -114,7 +116,6 @@ app.include_router(banners.router, prefix=settings.API_V1_STR)
 app.include_router(invoices.router, prefix=settings.API_V1_STR)
 app.include_router(ai.router, prefix=settings.API_V1_STR)
 app.include_router(recommendations.router, prefix=settings.API_V1_STR)
-app.include_router(admin_dashboard.router, prefix=settings.API_V1_STR)
 app.include_router(admin_audit.router, prefix=settings.API_V1_STR)
 app.include_router(admin.router, prefix=settings.API_V1_STR)
 app.include_router(inventory.router, prefix=settings.API_V1_STR)
@@ -133,5 +134,16 @@ def root():
         "message": "Welcome to ShopSphere API",
         "docs": "/docs",
         "openapi": f"{settings.API_V1_STR}/openapi.json",
+        "environment": settings.ENVIRONMENT,
+    }
+
+
+@app.get("/health", tags=["Health"])
+def health(db: Session = Depends(get_db)):
+    """Liveness/readiness probe — also verifies database connectivity."""
+    db.execute(text("SELECT 1"))
+    return {
+        "status": "ok",
+        "database": "ok",
         "environment": settings.ENVIRONMENT,
     }
