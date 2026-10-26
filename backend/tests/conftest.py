@@ -123,13 +123,16 @@ def admin_token(client, db):
     db.query(User).filter(User.email == "admin@test.com").update({"role": "admin"})
     u = db.query(User).filter(User.email == "admin@test.com").first()
     if u:
+        u.role = "admin"
         ar = db.query(Role).filter(Role.name == "admin").first()
         if not ar:
             ar = Role(name="admin")
             db.add(ar)
             db.flush()
         try:
-            db.add(UserRole(user_id=u.id, role_id=ar.id))
+            ur = db.query(UserRole).filter(UserRole.user_id == u.id, UserRole.role_id == ar.id).first()
+            if not ur:
+                db.add(UserRole(user_id=u.id, role_id=ar.id))
         except Exception:
             pass
     db.commit()
