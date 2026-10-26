@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import List
 
 from app.core.exceptions import BadRequestException, ConflictException, ForbiddenException, NotFoundException
+from app.dependencies.roles import collect_role_names
 from app.models.user import User
 from app.repositories.coupon_repo import CouponRepository
 from app.schemas.coupon import CouponCreate, CouponResponse, CouponUpdate
@@ -14,7 +15,7 @@ class CouponService:
         self.coupon_repo = coupon_repo
 
     def _require_admin(self, user: User) -> None:
-        if user.role != "admin":
+        if "admin" not in collect_role_names(user):
             raise ForbiddenException("Only admins can manage coupons")
 
     def list_coupons(self, current_user: User) -> List[CouponResponse]:

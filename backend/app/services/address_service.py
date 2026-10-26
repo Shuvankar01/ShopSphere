@@ -23,6 +23,12 @@ class AddressService:
         address = self.address_repo.create(current_user.id, data)
         return AddressResponse.model_validate(address)
 
+    def get_address(self, address_id: str, current_user: User) -> AddressResponse:
+        address = self.address_repo.get_user_address(current_user.id, address_id)
+        if not address:
+            raise NotFoundException("Address not found")
+        return AddressResponse.model_validate(address)
+
     def update_address(
         self, address_id: str, data: AddressUpdate, current_user: User
     ) -> AddressResponse:

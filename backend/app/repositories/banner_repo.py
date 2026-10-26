@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import List
 from sqlalchemy.orm import Session
 from app.models.banner import Banner
 
@@ -10,7 +11,7 @@ class BannerRepository:
     def get(self, banner_id: str) -> Banner | None:
         return self.db.query(Banner).filter(Banner.id == banner_id).first()
 
-    def list(self, active_only: bool = False) -> list[Banner]:
+    def list(self, active_only: bool = False) -> List[Banner]:
         q = self.db.query(Banner)
         now = datetime.now(timezone.utc)
         if active_only:
@@ -19,7 +20,7 @@ class BannerRepository:
             q = q.filter((Banner.ends_at == None) | (Banner.ends_at >= now))
         return q.order_by(Banner.created_at.desc()).all()
 
-    def all(self) -> list[Banner]:
+    def all(self) -> List[Banner]:
         return self.db.query(Banner).order_by(Banner.created_at.desc()).all()
 
     def create(self, **data) -> Banner:

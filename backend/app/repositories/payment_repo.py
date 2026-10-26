@@ -25,7 +25,7 @@ class PaymentRepository:
     def get_payment(self, payment_id: str) -> Payment | None:
         return self.db.query(Payment).filter(Payment.id == payment_id).first()
 
-    def get_payments_for_order(self, order_id: str) -> list[Payment]:
+    def get_payments_for_order(self, order_id: str) -> List[Payment]:
         return (
             self.db.query(Payment)
             .filter(Payment.order_id == order_id)

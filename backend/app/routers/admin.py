@@ -5,19 +5,25 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.schemas.admin import AdminStatsResponse
 from app.schemas.user import UserResponse
-from app.schemas.order import OrderResponse
+from app.schemas.order import OrderResponse, OrderStatusUpdate
 from app.schemas.product import ProductResponse, ReviewModerationUpdate, ReviewResponse
+from app.schemas.coupon import CouponCreate, CouponResponse
 from app.schemas.return_request import ReturnActionRequest, ReturnResponse
 from app.services.admin_service import AdminService
 from app.services.return_service import ReturnService
 from app.services.refund_service import RefundService
 from app.services.product_service import ProductService
+from app.services.coupon_service import CouponService
+from app.services.order_service import OrderService
 from app.repositories.user_repo import UserRepository
 from app.repositories.product_repo import ProductRepository
 from app.repositories.order_repo import OrderRepository
 from app.repositories.return_repo import ReturnRepository
 from app.repositories.payment_repo import PaymentRepository
 from app.repositories.inventory_repo import InventoryRepository
+from app.repositories.cart_repo import CartRepository
+from app.repositories.coupon_repo import CouponRepository
+from app.repositories.address_repo import AddressRepository
 from app.database.session import get_db
 from app.dependencies.auth import get_current_active_user
 from app.dependencies.roles import require_admin
@@ -31,6 +37,21 @@ def get_admin_service(db: Session = Depends(get_db)) -> AdminService:
         user_repo=UserRepository(db),
         product_repo=ProductRepository(db),
         order_repo=OrderRepository(db)
+    )
+
+
+def get_coupon_service(db: Session = Depends(get_db)) -> CouponService:
+    return CouponService(CouponRepository(db))
+
+
+def get_order_service(db: Session = Depends(get_db)) -> OrderService:
+    return OrderService(
+        OrderRepository(db),
+        CartRepository(db),
+        InventoryRepository(db),
+        CouponRepository(db),
+        PaymentRepository(db),
+        AddressRepository(db),
     )
 
 
@@ -62,6 +83,15 @@ def get_dashboard(
 ):
     return admin_service.get_dashboard_stats(current_user)
 
+
+@router.get("/stats", response_model=AdminStatsResponse)
+def get_stats(
+    current_user: User = Depends(get_current_active_user),
+    admin_service: AdminService = Depends(get_admin_service)
+):
+    """Alias of `/dashboard` — the frontend admin panel reads `/admin/stats`."""
+    return admin_service.get_dashboard_stats(current_user)
+
 @router.get("/users", response_model=List[UserResponse], dependencies=[Depends(require_admin)])
 def get_users(
     current_user: User = Depends(get_current_active_user),
@@ -82,6 +112,60 @@ def get_products(
     admin_service: AdminService = Depends(get_admin_service)
 ):
     return admin_service.get_all_products(current_user)
+
+
+@router.put("/users/{user_id}/toggle", response_model=UserResponse, dependencies=[Depends(require_admin)])
+def toggle_user(
+    user_id: str,
+    current_user: User = Depends(get_current_active_user),
+    admin_service: AdminService = Depends(get_admin_service)
+):
+    """Activate / deactivate a user."""
+    return admin_service.toggle_user_status(user_id, current_user)
+
+
+@router.put("/products/{product_id}/toggle", response_model=ProductResponse, dependencies=[Depends(require_admin)])
+def toggle_product(
+    product_id: str,
+    current_user: User = Depends(get_current_active_user),
+    admin_service: AdminService = Depends(get_admin_service)
+):
+    """Activate / deactivate a product (soft delete)."""
+    return admin_service.toggle_product_status(product_id, current_user)
+
+
+@router.put("/orders/{order_id}/status", response_model=OrderResponse, dependencies=[Depends(require_admin)])
+def update_order_status(
+    order_id: str,
+    status_update: OrderStatusUpdate,
+    current_user: User = Depends(get_current_active_user),
+    svc: OrderService = Depends(get_order_service),
+):
+    """Move an order through the fulfillment lifecycle (same rules as
+    `PUT /api/orders/{id}/status`, which is admin-only too)."""
+    return svc.update_order_status(order_id, status_update, current_user)
+
+
+# ---------------------------------------------------------------------------
+# Coupons (admin lifecycle — mirrors /api/coupons, which is admin-gated too)
+# ---------------------------------------------------------------------------
+
+@router.get("/coupons", response_model=List[CouponResponse], dependencies=[Depends(require_admin)])
+def list_coupons(
+    current_user: User = Depends(get_current_active_user),
+    svc: CouponService = Depends(get_coupon_service),
+):
+    return svc.list_coupons(current_user)
+
+
+@router.post("/coupons", response_model=CouponResponse, status_code=201, dependencies=[Depends(require_admin)])
+def create_coupon(
+    data: CouponCreate,
+    current_user: User = Depends(get_current_active_user),
+    svc: CouponService = Depends(get_coupon_service),
+):
+    return svc.create_coupon(data, current_user)
+
 
 # ---------------------------------------------------------------------------
 # Returns (admin moderation — controlled states, separate from payment state)

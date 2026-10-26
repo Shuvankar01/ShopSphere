@@ -37,6 +37,16 @@ def create_address(
     return svc.create_address(data, current_user)
 
 
+@router.get("/{address_id}", response_model=AddressResponse)
+def get_address(
+    address_id: str,
+    current_user: User = Depends(get_current_active_user),
+    svc: AddressService = Depends(get_address_service),
+):
+    """Fetch a single address of the current user (404 for anyone else's)."""
+    return svc.get_address(address_id, current_user)
+
+
 @router.put("/{address_id}", response_model=AddressResponse)
 def update_address(
     address_id: str,

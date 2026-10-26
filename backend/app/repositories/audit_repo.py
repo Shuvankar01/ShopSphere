@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from app.models.audit_log import AuditLog
+from app.models.audit import AuditLog
 
 
 class AuditLogRepository:
