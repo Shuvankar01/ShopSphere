@@ -24,3 +24,6 @@ htmlcov/
 .vscode/
 
 *.log
+
+# Runtime upload directory (populated by the image-upload endpoint)
+backend/uploads/
