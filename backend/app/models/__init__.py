@@ -15,7 +15,7 @@ from .coupon import Coupon, CouponUsage
 from .return_request import ReturnRequest, ReturnItem, Return
 from .notification import Notification
 from .banner import Banner
-from .audit_log import AuditLog
+from .audit import AuditLog
 
 __all__ = [
     "Base",

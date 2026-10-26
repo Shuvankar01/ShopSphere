@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Text
+from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Text, Index
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.models.base import Base
@@ -7,6 +7,10 @@ from app.models.base import Base
 
 class Notification(Base):
     __tablename__ = "notifications"
+    __table_args__ = (
+        # Serves the "unread count" query (WHERE user_id = ? AND is_read = false).
+        Index("ix_notifications_user_unread", "user_id", "is_read"),
+    )
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
     user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
