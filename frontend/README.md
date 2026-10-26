@@ -114,10 +114,16 @@ The frontend talks to these endpoints (all JSON, JWT bearer auth except where no
 - `POST /api/payment/create` body `{ order_id, payment_method }` → `{ transaction_id, status, redirect_url? }` (owner only; 404 unknown/foreign order, 409 already paid/cancelled, 422 invalid method)
 
 ### Admin
-- `GET /api/admin/dashboard` → `AdminStats`
+- `GET /api/admin/dashboard` → `AdminStats` (alias: `GET /api/admin/stats`)
 - `GET /api/admin/users` → `User[]`
 - `GET /api/admin/orders` → `Order[]`
 - `GET /api/admin/products` → `Product[]`
+- `PUT /api/admin/users/:id/toggle` → `User` (activate/deactivate)
+- `PUT /api/admin/products/:id/toggle` → `Product` (activate/deactivate, soft delete)
+- `PUT /api/admin/orders/:id/status` body `{ status, reason? }` → `Order` (same rules as `PUT /api/orders/:id/status`)
+- `GET /api/admin/coupons` → `Coupon[]`, `POST /api/admin/coupons` → `Coupon` (admin aliases of `/api/coupons`)
+- `GET /api/admin/reviews[?status=]` → `Review[]`, `POST /api/admin/reviews/:id/moderate` body `{ action }` → `Review`
+- `GET /api/admin/audit-logs` → `AuditLog[]`
 - Coupon/brand/category management live under `POST/PUT/DELETE /api/coupons`, `/api/brands`, `/api/categories` (admin-only, see above)
 
 ### CORS

@@ -97,11 +97,18 @@ In `frontend/vite.config.ts`, ensure a proxy is set up or ensure the frontend's 
 
 ## Testing
 
-Run the comprehensive Pytest suite:
+Run the comprehensive Pytest suite (from `backend/`):
 ```bash
-pytest
+python -m pytest
 ```
-Tests use an in-memory SQLite database to run quickly and isolated from your development PostgreSQL database.
+Tests run against a real PostgreSQL database — `shopsphere_test` by default,
+overridable with `TEST_DATABASE_URL`. SQLite URLs are rejected.
+
+For a live HTTP smoke test of every public API surface, start the server and
+run the end-to-end verification script:
+```bash
+python scripts/e2e_verify.py
+```
 
 ## Code Quality
 

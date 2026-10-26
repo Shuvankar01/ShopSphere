@@ -1,23 +1,58 @@
 # ShopSphere
 
-ShopSphere is a full-stack e-commerce application with a FastAPI backend and a React/TypeScript frontend.
+Full-stack e-commerce platform built with FastAPI (backend) and TanStack Start + React 19 + Vite + Tailwind CSS v4 (frontend). PostgreSQL is required for all environments (no SQLite fallback).
 
-## Project Structure
+## Features
+- Authentication (email/password; no OTP/email verification)
+- Products, categories, brands, variants, images
+- Cart, wishlist
+- Checkout with address, shipping, coupons, tax
+- DEMO two-phase payments (mock provider)
+- Orders, status history, returns, refunds (demo)
+- Reviews with moderation
+- Admin dashboard and management
+- Inventory with movement history
+- Notifications (in-app only)
+- Invoices (local HTML/PDF fallback)
+- AI (mock when key unavailable)
+- Recommendations (rule-based)
+- SEO/PWA basics
 
-- `backend/` - FastAPI REST API with SQLAlchemy, Alembic migrations, and pytest suite.
-- `frontend/` - React frontend built with TanStack Router, TypeScript, and Vite.
+## Tech Stack
+- Backend: FastAPI, SQLAlchemy, Alembic, Pydantic v2, psycopg
+- Frontend: TanStack Start, React 19, TypeScript, Vite, Tailwind CSS v4, shadcn/ui, TanStack Query, React Hook Form, Zod
+- Database: PostgreSQL
+- Testing: pytest
 
-## Getting Started
+## Quickstart (Local)
 
-### Backend
-1. `cd backend`
-2. Set up virtual environment `.venv`
-3. Install dependencies: `pip install -r requirements.txt`
-4. Run migrations: `alembic upgrade head`
-5. Seed database: `python scripts/seed.py`
-6. Start server: `uvicorn app.utils.main:app --reload`
+Backend:
+```bash
+cd backend
+pip install -r requirements.txt
+# set DATABASE_URL
+alembic upgrade head
+uvicorn app.main:app --reload --port 8000
+```
 
-### Frontend
-1. `cd frontend`
-2. Install dependencies: `npm install`
-3. Start dev server: `npm run dev`
+Frontend:
+```bash
+cd frontend
+npm ci
+npm run dev
+```
+
+## Docker
+```bash
+docker compose up --build
+```
+
+## Testing
+```bash
+cd backend
+python -m pytest -q
+cd frontend
+npx tsc --noEmit && npm run build
+```
+
+See `docs/` for architecture, API, security, development, deployment details.
